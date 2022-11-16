@@ -22,8 +22,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-require "selenium-webdriver"
-require_relative "selenium_webdriver_helper/version"
+require 'selenium-webdriver'
+require 'logger'
+require_relative 'selenium_webdriver_helper/version'
+require_relative 'selenium_webdriver_helper/constants'
 
 # below is the code to make life easier as it already has selenium webdriver methods defined
 module SeleniumWebdriverHelper
@@ -32,16 +34,19 @@ module SeleniumWebdriverHelper
 
   attr_accessor :driver
 
-  def initialize(driver)
-    @driver = driver
+  def log_info(message)
+    logger = Logger.new('selenium.log')
+    logger.info(message)
   end
 
-  def block_execution(retry_count = 3, &block)
-    block.call
-  rescue Selenium::WebDriver::Error => e
-    logger.info "#{e.message} \n #{e.backtrace}"
-    retry_count -= 1
-    retry if retry_count.positive?
+  def log_debug(message)
+    logger = Logger.new('selenium.log')
+    logger.debug(message)
+  end
+
+  def log_error(message)
+    logger = Logger.new('selenium.log')
+    logger.error(message)
   end
 
   def selectors_from_page_objects(page_object, value = nil)
@@ -57,41 +62,89 @@ module SeleniumWebdriverHelper
     output
   end
 
-  def get_element(selector, custom_timeout: nil, driver2: nil)
+  def block_execution(retry_count = 3, &block)
+    block.call
+  rescue Selenium::WebDriver::Error => e
+    logger.info "#{e.message} \n #{e.backtrace}"
+    retry_count -= 1
+    retry if retry_count.positive?
+  end
+
+  def initialize_driver(driver, implicit_wait = LONGER_WAIT)
+    $driver = driver
+    $driver.manage.timeouts.implicit_wait = implicit_wait
+    $wait = Selenium::WebDriver::Wait.new(timeout: implicit_wait) # seconds
+  end
+
+  def execute_script(js, *args)
+    $driver.execute_script(js, *args)
+  rescue Selenium::WebDriver::Error::UnsupportedOperationError => e
+    log_error("[Exception] underlying webdriver instance does not support javascript #{e.message}")
+  end
+
+  def wait_for_page_load(custom_timeout = SHORTER_WAIT)
+    wait = Selenium::WebDriver::Wait.new(timeout: custom_timeout)
+    wait.until { execute_script('return document.readyState;') == 'complete' }
+  end
+
+  def get_url(url, driver = $driver)
+    driver.get(url)
+    wait_for_page_load
+    log_info("visited #{url}")
+  end
+
+  def maximize_window(driver = $driver)
+    driver.manage.window.maximize
+    log_info('window maximized')
+  end
+
+  def save_screenshot(path, driver = $driver)
+    driver.save_screenshot(path)
+    log_info("screenshot captured and saved at path #{path}")
+  end
+
+  def get_element(selector, custom_timeout = LONGER_WAIT, driver = $driver)
     how, what = selectors_from_page_objects(selector)
     block_execution(3) do
-      wait = Selenium::WebDriver::Wait.new(timeout: (custom_timeout.nil? ? LONGER_WAIT : custom_timeout))
+      wait = Selenium::WebDriver::Wait.new(timeout: custom_timeout)
       begin
-        wait.until { (driver2.nil? ? @driver : driver2).find_element(how, what).displayed? }
-        (driver2.nil? ? @driver : driver2).find_element(how, what)
+        wait.until { driver.find_element(how, what).displayed? }
+        driver.find_element(how, what)
       rescue Selenium::WebDriver::Error::NoSuchElementError => e
         raise "Exception #{e.message} \n #{e.backtrace}"
       end
     end
   end
 
-  def get_elements(selector, custom_timeout: nil, driver2: nil)
+  def get_elements(selector, custom_timeout: LONGER_WAIT, driver: $driver)
     how, what = selectors_from_page_objects(selector)
     block_execution(3) do
-      wait = Selenium::WebDriver::Wait.new(timeout: (custom_timeout.nil? ? LONGER_WAIT : custom_timeout))
+      wait = Selenium::WebDriver::Wait.new(timeout: custom_timeout)
       begin
-        wait.until { (driver2.nil? ? @driver : driver2).find_elements(how, what)[0].displayed? }
-        (driver2.nil? ? @driver : driver2).find_elements(how, what)
+        wait.until { driver.find_elements(how, what)[0].displayed? }
+        driver.find_elements(how, what)
       rescue Selenium::WebDriver::Error::NoSuchElementError => e
         raise "Exception #{e.message} \n #{e.backtrace}"
       end
     end
   end
 
-  def find_element_and_send_keys(selector, value)
+  def element_text(selector, custom_timeout = LONGER_WAIT, driver = $driver)
+    block_execution(3) do
+      get_element(selector, custom_timeout, driver).text
+    end
+  end
+
+  def find_element_and_send_keys(selector, value, driver = $driver)
     block_execution(3) do
       get_element(selector).send_keys(value)
     end
   end
 
-  def wait_for_page_load
-    wait = Selenium::WebDriver::Wait.new(LONG_WAIT)
-    wait.until { execute_script("return document.readyState;") == "complete" }
+  def element_click(selector, custom_timeout = LONGER_WAIT, driver = $driver)
+    block_execution(3) do
+      get_element(selector, custom_timeout, driver).click
+    end
   end
 
   def visible_element(selector)
@@ -102,8 +155,8 @@ module SeleniumWebdriverHelper
     raise "No visible element found for selector - #{selector}"
   end
 
-  def wait_for_element_visibility(selector_or_element, visibility: true, timeout: LONG_WAIT)
-    wait = Selenium::WebDriver::Wait.new(timeout: timeout)
+  def wait_for_element_visibility(selector_or_element, visibility = true, custom_timeout = LONG_WAIT)
+    wait = Selenium::WebDriver::Wait.new(timeout: custom_timeout)
     if !(selector_or_element.is_a?(Array) || selector_or_element.is_a?(Hash))
       wait.until { selector_or_element.displayed? == visibility }
     else
@@ -111,40 +164,40 @@ module SeleniumWebdriverHelper
     end
   end
 
-  def wait_for_element(selector, driver2: nil)
+  def wait_for_element(selector, driver = $driver)
     how, what = selectors_from_page_objects(selector)
     5.times do
-      (driver2.nil? ? @driver : driver2).find_element(how, what)
+      driver.find_element(how, what)
       break
     rescue Selenium::WebDriver::Error::NoSuchElementError => e
       logger.info "[Exception] Retrying to find element due to exception #{e.message}"
     end
   end
 
-  def get_child_element(parent_element, selector, custom_timeout: LONG_WAIT)
+  def get_child_element(parent_element, selector, custom_timeout = LONG_WAIT)
     how, what = selectors_from_page_objects(selector)
     block_execution(3) do
-      wait = Selenium::WebDriver::Wait.new(timeout: (custom_timeout.nil? ? LONGER_WAIT : custom_timeout))
+      wait = Selenium::WebDriver::Wait.new(timeout: custom_timeout)
       wait.until { parent_element.find_element(how, what).displayed? }
       parent_element.find_element(how, what)
     end
   end
 
-  def get_child_elements(parent_element, selector, custom_timeout: LONG_WAIT)
+  def get_child_elements(parent_element, selector, custom_timeout = LONG_WAIT)
     how, what = selectors_from_page_objects(selector)
     block_execution(3) do
-      wait = Selenium::WebDriver::Wait.new(timeout: (custom_timeout.nil? ? LONGER_WAIT : custom_timeout))
+      wait = Selenium::WebDriver::Wait.new(timeout: custom_timeout)
       wait.until { parent_element.find_elements(how, what)[0].displayed? }
       parent_element.find_elements(how, what)
     end
   end
 
-  def page_refresh(driver2: nil)
-    (driver2.nil? ? @driver : driver2).navigate.refresh
+  def page_refresh(driver = $driver)
+    driver.navigate.refresh
   end
 
-  def page_refresh_js(driver2: nil)
-    (driver2.nil? ? @driver : driver2).execute_script("location.reload(true);")
+  def page_refresh_js
+    execute_script('location.reload(true);')
   end
 
 end
