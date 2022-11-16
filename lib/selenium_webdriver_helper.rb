@@ -24,7 +24,6 @@
 
 require 'selenium-webdriver'
 require 'logger'
-require_relative 'selenium_webdriver_helper/version'
 require_relative 'selenium_webdriver_helper/constants'
 
 # below is the code to make life easier as it already has selenium webdriver methods defined
@@ -89,7 +88,7 @@ module SeleniumWebdriverHelper
 
   def get_url(url, driver = $driver)
     driver.get(url)
-    wait_for_page_load
+    # wait_for_page_load
     log_info("visited #{url}")
   end
 
@@ -116,7 +115,7 @@ module SeleniumWebdriverHelper
     end
   end
 
-  def get_elements(selector, custom_timeout: LONGER_WAIT, driver: $driver)
+  def get_elements(selector, custom_timeout = LONGER_WAIT, driver = $driver)
     how, what = selectors_from_page_objects(selector)
     block_execution(3) do
       wait = Selenium::WebDriver::Wait.new(timeout: custom_timeout)
@@ -147,8 +146,8 @@ module SeleniumWebdriverHelper
     end
   end
 
-  def visible_element(selector)
-    element_list = get_elements(selector, false)
+  def element_displayed?(selector)
+    element_list = get_elements(selector)
     element_list.each do |element|
       return element if element.displayed?
     end
