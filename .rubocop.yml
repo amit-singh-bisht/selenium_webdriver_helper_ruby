@@ -1,0 +1,40 @@
+AllCops:
+  TargetRubyVersion: 2.5
+
+Style/StringLiterals:
+  Enabled: true
+  EnforcedStyle: single_quotes
+
+Style/StringLiteralsInInterpolation:
+  Enabled: true
+  EnforcedStyle: double_quotes
+
+Style/CommentedKeyword:
+  Enabled: false
+
+Style/OptionalBooleanParameter:
+  Enabled: false
+
+Style/RescueStandardError:
+  Enabled: false
+
+Layout/LineLength:
+  Max: 120
+
+Metrics/MethodLength:
+  Max: 100
+
+Metrics/MethodName:
+  Max: 100
+
+Metrics/ClassLength:
+  Max: 250
+
+Metrics/AbcSize:
+  Enabled: false
+
+Metrics/ParameterLists:
+  Enabled: false
+
+Metrics/LineLength:
+  Max: 1000
