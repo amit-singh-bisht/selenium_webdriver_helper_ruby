@@ -1,5 +1,16 @@
 # SeleniumWebdriverHelper
 
+<div>
+    <a href="https://rubygems.org/gems/selenium_webdriver_helper">
+        <img alt="GEM Version" src="https://img.shields.io/gem/v/selenium_webdriver_helper?color=38C160&logo=ruby&logoColor=FE1616">
+    </a>
+    <a href="https://rubygems.org/gems/selenium_webdriver_helper">
+        <img alt="Gem Downloads" src="https://img.shields.io/gem/dt/selenium_webdriver_helper?color=38C160&logo=ruby&logoColor=FE1616">
+    </a>
+</div>
+
+<br>
+
 Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/selenium_webdriver_helper`. To experiment with that code, run `bin/console` for an interactive prompt.
 
 TODO: Delete this and the text above, and describe your gem
