@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 SUPER_ULTRA_SHORT_WAIT = 0.5
 ULTRA_SHORT_WAIT = 1
 SHORTEST_WAIT = 2
